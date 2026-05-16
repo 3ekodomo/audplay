@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudPlay Pro - Effect Sliders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #020617;
+            background-image: radial-gradient(circle at 50% -20%, #3b0764, #020617);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2.5rem;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #1e293b;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #a855f7;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        .slider-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="glass-card w-full max-w-md p-8 shadow-2xl">
+        <!-- Track Info -->
+        <div class="text-center mb-10">
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center border border-purple-500/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold">AudPlay <span class="text-purple-500">Pro</span></h1>
+            <p id="track-name" class="text-xs text-slate-400 mt-2 truncate max-w-xs mx-auto">Select a track...</p>
+        </div>
+
+        <audio id="audio-engine" crossOrigin="anonymous"></audio>
+
+        <div class="space-y-10">
+            <!-- Speed Slider -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="slider-label">Playback Speed</label>
+                    <span id="speed-display" class="text-purple-400 font-mono text-sm">1.0x</span>
+                </div>
+                <input type="range" id="speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <!-- Pitch Slider -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="slider-label">Voice Pitch</label>
+                    <span id="pitch-display" class="text-purple-400 font-mono text-sm">1.0x</span>
+                </div>
+                <input type="range" id="pitch-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+            </div>
+
+            <!-- Progress -->
+            <div class="pt-4">
+                <input type="range" id="progress-bar" value="0" class="!h-1">
+                <div class="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
+                    <span id="time-current">0:00</span>
+                    <span id="time-total">0:00</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center justify-between pt-2">
+                <button onclick="resetSliders()" class="p-3 bg-slate-800 rounded-2xl text-slate-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+
+                <button id="play-btn" class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center shadow-xl shadow-purple-900/40 hover:bg-purple-500 active:scale-95 transition-all">
+                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+
+                <div class="flex flex-col items-center">
+                    <label class="text-[9px] uppercase text-slate-500 mb-1">Vol</label>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.8" class="!w-20 !h-1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById('audio-engine');
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const speedSlider = document.getElementById('speed-slider');
+        const pitchSlider = document.getElementById('pitch-slider');
+        const speedDisplay = document.getElementById('speed-display');
+        const pitchDisplay = document.getElementById('pitch-display');
+        const progressBar = document.getElementById('progress-bar');
+        const volumeSlider = document.getElementById('volume-slider');
+
+        // Load URL
+        const params = new URLSearchParams(window.location.search);
+        const url = params.get('url');
+        if(url) {
+            audio.src = url;
+            document.getElementById('track-name').textContent = decodeURIComponent(url.split('/').pop());
+        }
+
+        // Play / Pause
+        playBtn.onclick = () => {
+            if (audio.paused) {
+                audio.play();
+                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+            } else {
+                audio.pause();
+                playIcon.innerHTML = `<path d="M8 5v14l11-7z" />`;
+            }
+        };
+
+        // Effect Logic
+        function applyEffects() {
+            const speed = parseFloat(speedSlider.value);
+            const pitch = parseFloat(pitchSlider.value);
+            
+            // Total rate = speed * pitch
+            // Higher pitch = Squeaky, Lower = Deep
+            audio.playbackRate = speed * pitch;
+            
+            speedDisplay.textContent = speed.toFixed(1) + 'x';
+            pitchDisplay.textContent = pitch.toFixed(1) + 'x';
+        }
+
+        speedSlider.oninput = applyEffects;
+        pitchSlider.oninput = applyEffects;
+
+        function resetSliders() {
+            speedSlider.value = 1.0;
+            pitchSlider.value = 1.0;
+            applyEffects();
+        }
+
+        // UI Updates
+        audio.ontimeupdate = () => {
+            if (!isNaN(audio.duration)) {
+                progressBar.value = (audio.currentTime / audio.duration) * 100;
+                document.getElementById('time-current').textContent = formatTime(audio.currentTime);
+                document.getElementById('time-total').textContent = formatTime(audio.duration);
+            }
+        };
+
+        progressBar.oninput = () => {
+            audio.currentTime = (progressBar.value / 100) * audio.duration;
+        };
+
+        volumeSlider.oninput = () => {
+            audio.volume = volumeSlider.value;
+        };
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return m + ":" + (sec < 10 ? '0' : '') + sec;
+        }
+    </script>
+</body>
+</html>
