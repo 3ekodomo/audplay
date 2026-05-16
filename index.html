@@ -297,7 +297,7 @@
       display: none;
     }
     .btn-loop.active-one .loop-badge { display: block; }
-    .btn-loop.active-one svg { opacity: 0.4; } /* Dim the arrows slightly when '1' is shown */
+    .btn-loop.active-one svg { opacity: 0.4; }
 
     /* Shuffle states */
     .btn-shuffle.active { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.35); color: var(--blue); box-shadow: 0 0 12px rgba(56,189,248,0.15); }
@@ -370,7 +370,7 @@
       padding: 16px;
       backdrop-filter: blur(24px) saturate(160%);
       -webkit-backdrop-filter: blur(24px) saturate(160%);
-      display: none; /* hidden until loaded */
+      display: none; 
       flex-direction: column;
       gap: 10px;
       max-height: 250px;
@@ -392,7 +392,6 @@
       padding-right: 4px;
     }
     
-    /* Scrollbar for playlist */
     .playlist-items::-webkit-scrollbar { width: 4px; }
     .playlist-items::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 4px; }
     .playlist-items::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 4px; }
@@ -417,26 +416,14 @@
       background: rgba(109,40,217,0.15);
       border-color: rgba(167,139,250,0.3);
     }
-    .pi-index {
-      font-size: 10px;
-      color: var(--text-lo);
-      width: 16px;
-      text-align: right;
-    }
+    .pi-index { font-size: 10px; color: var(--text-lo); width: 16px; text-align: right; }
     .playlist-item.active .pi-index { display: none; }
     
     .pi-playing-icon {
-      display: none;
-      align-items: flex-end;
-      gap: 2px;
-      height: 10px;
-      width: 16px;
-      justify-content: center;
+      display: none; align-items: flex-end; gap: 2px; height: 10px; width: 16px; justify-content: center;
     }
     .playlist-item.active .pi-playing-icon { display: flex; }
-    .pi-bar {
-      width: 2px; background: var(--accent); border-radius: 2px; height: 3px;
-    }
+    .pi-bar { width: 2px; background: var(--accent); border-radius: 2px; height: 3px; }
     .viz.playing ~ * .pi-playing-icon .pi-bar { animation: pi-bounce 0.8s ease-in-out infinite; }
     .viz.playing ~ * .pi-playing-icon .pi-bar:nth-child(2) { animation-delay: 0.15s; }
     .viz.playing ~ * .pi-playing-icon .pi-bar:nth-child(3) { animation-delay: 0.3s; }
@@ -570,7 +557,7 @@
       </div>
 
       <div class="url-row">
-        <input type="url" class="url-input" id="urlInput" placeholder="Paste Audio URL or GitHub Folder..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input type="url" class="url-input" id="urlInput" placeholder="Paste Audio, GitHub File, or Short Link..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button class="btn btn-load" id="btnLoadUrl">Load</button>
       </div>
 
@@ -626,12 +613,10 @@
     // ── State ─────────────────────────────────────────────────
     let playlistData = []; 
     let currentIndex = -1;
-    
-    // Play modes: 'none', 'all', 'one'
-    let repeatMode = 'none'; 
+    let repeatMode = 'none'; // 'none', 'all', 'one'
     let isShuffle = false;
-    let shuffledIndices = []; // Stores the randomized order
-    let shuffleIndex = 0;     // Current position in shuffledIndices
+    let shuffledIndices = [];
+    let shuffleIndex = 0;
 
     // ── Helpers ─────────────────────────────────────────────────
     function fmtTime(s) {
@@ -651,9 +636,7 @@
       return 'Squeaky';
     }
 
-    function pct(val, min, max) {
-      return ((val - min) / (max - min) * 100).toFixed(2) + '%';
-    }
+    function pct(val, min, max) { return ((val - min) / (max - min) * 100).toFixed(2) + '%'; }
 
     function showError(msg) {
       errorMsg.textContent = msg;
@@ -661,13 +644,8 @@
       setLoading(false);
     }
 
-    function hideError() {
-      errorBanner.style.display = 'none';
-    }
-
-    function setLoading(on) {
-      loadingBar.style.display = on ? 'block' : 'none';
-    }
+    function hideError() { errorBanner.style.display = 'none'; }
+    function setLoading(on) { loadingBar.style.display = on ? 'block' : 'none'; }
 
     function applyRates() {
       const spd   = parseFloat(speedSlider.value);
@@ -702,74 +680,54 @@
       viz.classList.toggle('playing', isPlaying);
     }
 
-    // ── Playlist & Shuffle Logic ─────────────────────────────────
+    // ── Playlist Logic ───────────────────────────────────────────
     function initShuffle() {
       if (!playlistData.length) return;
       shuffledIndices = Array.from({length: playlistData.length}, (_, i) => i);
-      // Fisher-Yates shuffle
       for (let i = shuffledIndices.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
       }
-      // Ensure current track is first in shuffle order so we don't repeat it immediately
       if (currentIndex >= 0) {
         const cIdx = shuffledIndices.indexOf(currentIndex);
-        if (cIdx > -1) {
-          [shuffledIndices[0], shuffledIndices[cIdx]] = [shuffledIndices[cIdx], shuffledIndices[0]];
-        }
+        if (cIdx > -1) [shuffledIndices[0], shuffledIndices[cIdx]] = [shuffledIndices[cIdx], shuffledIndices[0]];
       }
       shuffleIndex = 0;
     }
 
     function getNextIndex() {
       if (playlistData.length === 0) return -1;
-      
-      if (repeatMode === 'one') return currentIndex; // Repeat same song
+      if (repeatMode === 'one') return currentIndex;
 
       if (isShuffle) {
         shuffleIndex++;
         if (shuffleIndex >= shuffledIndices.length) {
-          if (repeatMode === 'all') {
-            initShuffle(); // Reshuffle for next loop
-            return shuffledIndices[0];
-          }
-          return -1; // End of list
+          if (repeatMode === 'all') { initShuffle(); return shuffledIndices[0]; }
+          return -1;
         }
         return shuffledIndices[shuffleIndex];
       }
 
-      // Normal ordered play
       let nextIdx = currentIndex + 1;
-      if (nextIdx >= playlistData.length) {
-        if (repeatMode === 'all') return 0;
-        return -1;
-      }
+      if (nextIdx >= playlistData.length) return repeatMode === 'all' ? 0 : -1;
       return nextIdx;
     }
 
     function getPrevIndex() {
       if (playlistData.length === 0) return -1;
-      // If playing > 3 seconds, just restart current track
       if (audio.currentTime > 3) return currentIndex;
 
       if (isShuffle) {
         shuffleIndex--;
         if (shuffleIndex < 0) {
-          if (repeatMode === 'all') {
-            shuffleIndex = shuffledIndices.length - 1;
-            return shuffledIndices[shuffleIndex];
-          }
-          shuffleIndex = 0;
-          return -1; // Can't go back further
+          if (repeatMode === 'all') { shuffleIndex = shuffledIndices.length - 1; return shuffledIndices[shuffleIndex]; }
+          shuffleIndex = 0; return -1;
         }
         return shuffledIndices[shuffleIndex];
       }
 
       let prevIdx = currentIndex - 1;
-      if (prevIdx < 0) {
-        if (repeatMode === 'all') return playlistData.length - 1;
-        return 0; // Just stay at 0
-      }
+      if (prevIdx < 0) return repeatMode === 'all' ? playlistData.length - 1 : 0;
       return prevIdx;
     }
 
@@ -799,7 +757,6 @@
         `;
         playlistItems.appendChild(div);
 
-        // Auto-scroll to active
         if (index === currentIndex) {
           setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
         }
@@ -816,71 +773,74 @@
       setLoading(true);
       setPlaying(false);
 
-      // Reset progress
       progressSlider.value = 0;
       progressSlider.style.setProperty('--pct', '0%');
       currentTimeEl.textContent = '0:00';
       durationEl.textContent    = '0:00';
 
       trackTitle.textContent = track.title;
-      renderPlaylist(); // Update active states
-
-      // Update URL silently
-      try {
-        const u = new URL(window.location.href);
-        // Only update 'url' if it was a single file override.
-        // For folders, we keep 'furl' and could potentially add 'track='
-      } catch(e) {}
+      renderPlaylist();
 
       audio.src = track.url;
       audio.load();
       
-      // Attempt autoplay
       const p = audio.play();
       if (p && typeof p.catch === 'function') {
-        p.catch(err => {
-          if (err.name !== 'AbortError') showError('Playback blocked: ' + err.message);
-        });
+        p.catch(err => { if (err.name !== 'AbortError') showError('Playback blocked: ' + err.message); });
       }
     }
 
-    // ── Input & Fetching ─────────────────────────────────────────
-    
-    // Checks if URL is a GitHub directory
+    // ── Input Processing & URL Resolution ────────────────────────
+
+    async function resolveUrl(url) {
+      // Add secure protocol if user just pastes 'is.gd/xyz'
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+      // Detect known shortener domains
+      const shortDomains = ['is.gd', 'bit.ly', 'tinyurl.com', 't.co', 'cutt.ly', 'ow.ly', 'rb.gy', 'shorturl.at'];
+      const isShort = shortDomains.some(d => url.includes(d));
+      
+      if (!isShort) return url;
+
+      try {
+        // Use allorigins to securely follow redirects via CORS proxy
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status && data.status.url) {
+            return data.status.url; // The fully expanded URL (e.g. github tree/blob)
+          }
+        }
+      } catch (err) {
+        console.warn("URL resolution via proxy failed, falling back to original.", err);
+      }
+      return url;
+    }
+
     function isGitHubFolder(url) {
-      return /github\.com\/[^\/]+\/[^\/]+\/(tree|blob)\//.test(url) && !/\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(url);
+      return /github\.com\/[^\/]+\/[^\/]+\/(tree|blob)\//i.test(url) && !/\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(url);
     }
 
     async function loadGitHubFolder(folderUrl) {
-      hideError();
-      setLoading(true);
-      trackTitle.textContent = 'Fetching folder contents...';
-      
       try {
-        // e.g. https://github.com/3ekodomo/audplay/tree/main/audio1folder
-        const match = folderUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree|blob)\/([^\/]+)\/(.*)/);
+        const match = folderUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree|blob)\/([^\/]+)\/?(.*)/i);
         if (!match) throw new Error("Invalid GitHub folder format.");
         
         const [, owner, repo, branch, path] = match;
-        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path ? encodeURI(path) : ''}?ref=${branch}`;
         
         const res = await fetch(apiUrl);
         if (!res.ok) {
-          if (res.status === 403 || res.status === 429) throw new Error("GitHub API rate limit exceeded.");
+          if (res.status === 403 || res.status === 429) throw new Error("GitHub rate limit exceeded.");
           if (res.status === 404) throw new Error("Folder not found.");
           throw new Error(`GitHub API Error: ${res.status}`);
         }
         
         const data = await res.json();
-        
-        // Filter for audio files
         const audioFiles = data.filter(item => item.type === 'file' && /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(item.name));
         
-        if (audioFiles.length === 0) {
-          throw new Error("No supported audio files found in this folder.");
-        }
+        if (audioFiles.length === 0) throw new Error("No audio files found in folder.");
 
-        // Build playlist
         playlistData = audioFiles.map(file => ({
           title: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
           url: file.download_url
@@ -892,74 +852,79 @@
       } catch (err) {
         showError(err.message);
         trackTitle.textContent = 'Load Failed';
-      } finally {
         setLoading(false);
       }
     }
 
-    function loadSingleUrl(rawUrl) {
-      const url = rawUrl.trim();
+    function loadSingleUrl(finalUrl) {
       let title = 'Audio Track';
       try {
-        const raw = url.split('/').pop().split('?')[0];
-        title = decodeURIComponent(raw).replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') || 'Audio Track';
+        const rawName = finalUrl.split('/').pop().split('?')[0];
+        title = decodeURIComponent(rawName).replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') || 'Audio Track';
       } catch(e) {}
 
-      playlistData = [{ title, url }];
+      playlistData = [{ title, url: finalUrl }];
       if (isShuffle) initShuffle();
       playTrack(0);
     }
 
-    function processInputUrl(val) {
-      if (!val) return;
-      if (isGitHubFolder(val)) {
-        // Update browser URL
+    async function processInputUrl(rawInput) {
+      if (!rawInput) return;
+      hideError();
+      setLoading(true);
+      trackTitle.textContent = 'Resolving URL...';
+
+      try {
+        let inputUrl = rawInput.trim();
+        // 1. Resolve short URLs
+        let finalUrl = await resolveUrl(inputUrl);
+
+        // 2. Convert GitHub Web UI Blob links to Raw Media links
+        const blobRegex = /^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)$/i;
+        if (blobRegex.test(finalUrl)) {
+          finalUrl = finalUrl.replace(blobRegex, 'https://raw.githubusercontent.com/$1/$2/$3/$4');
+        }
+
+        // 3. Keep the shared/short URL in the address bar if possible
         try {
           const u = new URL(window.location.href);
           u.searchParams.delete('url');
-          u.searchParams.set('furl', val);
-          history.replaceState(null, '', u.toString());
-        } catch(e) {}
-        loadGitHubFolder(val);
-      } else {
-        try {
-          const u = new URL(window.location.href);
           u.searchParams.delete('furl');
-          u.searchParams.set('url', val);
+          if (isGitHubFolder(finalUrl)) {
+            u.searchParams.set('furl', rawInput);
+          } else {
+            u.searchParams.set('url', rawInput);
+          }
           history.replaceState(null, '', u.toString());
         } catch(e) {}
-        loadSingleUrl(val);
+
+        // 4. Route Execution
+        if (isGitHubFolder(finalUrl)) {
+          await loadGitHubFolder(finalUrl);
+        } else {
+          loadSingleUrl(finalUrl);
+        }
+
+      } catch (err) {
+        showError("Failed to process URL: " + err.message);
+        setLoading(false);
       }
     }
 
-    // ── Parse Initial URL Params ─────────────────────────────────
-    const params   = new URLSearchParams(window.location.search);
-    const initFurl = params.get('furl');
-    const initUrl  = params.get('url');
+    // ── Boot & Listeners ────────────────────────────────────────
+    
+    const params = new URLSearchParams(window.location.search);
+    const initParam = params.get('furl') || params.get('url');
 
-    if (initFurl) {
-      urlInput.value = initFurl;
-      loadGitHubFolder(initFurl);
-    } else if (initUrl) {
-      urlInput.value = initUrl;
-      loadSingleUrl(initUrl);
+    if (initParam) {
+      urlInput.value = initParam;
+      processInputUrl(initParam);
     } else {
       trackTitle.textContent = 'Paste URL or Folder below';
     }
 
-    // ── Audio events ─────────────────────────────────────────────
-    audio.addEventListener('canplay', () => {
-      setLoading(false);
-      hideError();
-      applyRates();
-    });
-
-    audio.addEventListener('loadedmetadata', () => {
-      durationEl.textContent = fmtTime(audio.duration);
-      progressSlider.max = 100;
-      applyRates();
-    });
-
+    audio.addEventListener('canplay', () => { setLoading(false); hideError(); applyRates(); });
+    audio.addEventListener('loadedmetadata', () => { durationEl.textContent = fmtTime(audio.duration); progressSlider.max = 100; applyRates(); });
     audio.addEventListener('waiting',  () => setLoading(true));
     audio.addEventListener('playing',  () => setLoading(false));
     audio.addEventListener('play',     () => { setPlaying(true);  hideError(); });
@@ -968,83 +933,44 @@
     audio.addEventListener('ended', () => {
       setPlaying(false);
       const nextIdx = getNextIndex();
-      if (nextIdx !== -1) {
-        playTrack(nextIdx);
-      }
+      if (nextIdx !== -1) playTrack(nextIdx);
     });
 
     audio.addEventListener('timeupdate', updateProgress);
-
     audio.addEventListener('error', () => {
       const code = audio.error ? audio.error.code : '?';
-      const msgs = {
-        1: 'Playback aborted.',
-        2: 'Network error.',
-        3: 'Decoding error (file corrupt).',
-        4: 'Format unsupported or CORS blocked.'
-      };
+      const msgs = { 1: 'Playback aborted.', 2: 'Network error.', 3: 'Decoding error (file corrupt).', 4: 'Format unsupported or CORS blocked.' };
       showError(msgs[code] || 'Unknown error (' + code + ').');
       setPlaying(false);
-      // Auto skip on error if playlist? Optional.
     });
 
-    // ── Controls ─────────────────────────────────────────────────
     btnPlay.addEventListener('click', () => {
       if (!audio.src) return;
       if (audio.paused) {
         const p = audio.play();
-        if (p && typeof p.catch === 'function') {
-          p.catch(err => { if (err.name !== 'AbortError') showError(err.message); });
-        }
-      } else {
-        audio.pause();
-      }
+        if (p && typeof p.catch === 'function') p.catch(err => { if (err.name !== 'AbortError') showError(err.message); });
+      } else audio.pause();
     });
 
-    btnNext.addEventListener('click', () => {
-      const nextIdx = getNextIndex();
-      if (nextIdx !== -1) playTrack(nextIdx);
-    });
-
+    btnNext.addEventListener('click', () => { const nIdx = getNextIndex(); if (nIdx !== -1) playTrack(nIdx); });
     btnPrev.addEventListener('click', () => {
-      // If single file, acts as seek back 10s
-      if (playlistData.length <= 1) {
-         audio.currentTime = Math.max(0, audio.currentTime - 10);
-         return;
-      }
-      const pIdx = getPrevIndex();
-      if (pIdx !== -1) playTrack(pIdx);
+      if (playlistData.length <= 1) { audio.currentTime = Math.max(0, audio.currentTime - 10); return; }
+      const pIdx = getPrevIndex(); if (pIdx !== -1) playTrack(pIdx);
     });
 
-    // Repeat Mode Toggle (None -> All -> One -> None)
     btnLoop.addEventListener('click', () => {
       btnLoop.classList.remove('active-all', 'active-one');
-      
-      if (repeatMode === 'none') {
-        repeatMode = 'all';
-        btnLoop.classList.add('active-all');
-      } else if (repeatMode === 'all') {
-        repeatMode = 'one';
-        btnLoop.classList.add('active-one');
-      } else {
-        repeatMode = 'none';
-      }
-      
-      // Update native loop if it's a single file and set to repeat all/one
-      if (playlistData.length <= 1) {
-        audio.loop = (repeatMode !== 'none');
-      } else {
-        audio.loop = false; // Custom logic handles playlist loop
-      }
+      if (repeatMode === 'none') { repeatMode = 'all'; btnLoop.classList.add('active-all'); }
+      else if (repeatMode === 'all') { repeatMode = 'one'; btnLoop.classList.add('active-one'); }
+      else repeatMode = 'none';
+      if (playlistData.length <= 1) audio.loop = (repeatMode !== 'none');
+      else audio.loop = false; 
     });
 
-    // Shuffle Toggle
     btnShuffle.addEventListener('click', () => {
       isShuffle = !isShuffle;
       btnShuffle.classList.toggle('active', isShuffle);
-      if (isShuffle) {
-        initShuffle();
-      }
+      if (isShuffle) initShuffle();
     });
 
     progressSlider.addEventListener('input', () => {
@@ -1055,19 +981,11 @@
 
     speedSlider.addEventListener('input', applyRates);
     pitchSlider.addEventListener('input', applyRates);
-
-    btnReset.addEventListener('click', () => {
-      speedSlider.value = 1.0;
-      pitchSlider.value = 1.0;
-      applyRates();
-    });
+    btnReset.addEventListener('click', () => { speedSlider.value = 1.0; pitchSlider.value = 1.0; applyRates(); });
 
     btnLoadUrl.addEventListener('click', () => processInputUrl(urlInput.value.trim()));
-    urlInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') processInputUrl(urlInput.value.trim());
-    });
+    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') processInputUrl(urlInput.value.trim()); });
 
-    // Init display
     applyRates();
   </script>
 </body>
