@@ -406,6 +406,69 @@
     .no-url .small { font-size: 10.5px; color: var(--text-lo); line-height: 1.7; }
 
     audio { display: none !important; visibility: hidden !important; opacity: 0 !important; }
+
+    /* ── Loading bar ── */
+    .loading-bar {
+      display: none;
+      height: 2px;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--accent-glow), var(--neon), var(--accent-glow));
+      background-size: 200% 100%;
+      animation: shimmer 1.2s linear infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Error banner ── */
+    .error-banner {
+      display: none;
+      align-items: flex-start;
+      gap: 8px;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.22);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .error-icon { color: var(--red); flex-shrink: 0; margin-top: 1px; }
+    .error-msg  { font-size: 10.5px; color: var(--red); line-height: 1.55; letter-spacing: 0.03em; }
+
+    /* ── URL input row ── */
+    .url-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 18px;
+    }
+    .url-input {
+      flex: 1;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(120,80,220,0.2);
+      border-radius: 10px;
+      padding: 8px 11px;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--text-mid);
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    .url-input::placeholder { color: var(--text-lo); }
+    .url-input:focus { border-color: rgba(167,139,250,0.4); color: var(--text-hi); }
+    .btn-load {
+      flex-shrink: 0;
+      padding: 8px 13px;
+      border-radius: 10px;
+      font-size: 9.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      height: auto;
+      color: var(--neon);
+      border-color: rgba(167,139,250,0.25);
+    }
+    .btn-load:hover { background: rgba(109,40,217,0.25); border-color: rgba(167,139,250,0.4); color: var(--text-hi); }
   </style>
 </head>
 <body>
@@ -413,6 +476,15 @@
 
   <div class="wrapper">
     <div class="card">
+
+      <div class="loading-bar" id="loadingBar"></div>
+
+      <div class="error-banner" id="errorBanner">
+        <svg class="error-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span class="error-msg" id="errorMsg"></span>
+      </div>
 
       <div class="header">
         <div class="logo-ring">
@@ -496,45 +568,38 @@
         <span style="font-size:9.5px;color:var(--text-lo);letter-spacing:0.05em" id="combinedRate">rate: 1.00×</span>
       </div>
 
+      <div class="url-row">
+        <input type="url" class="url-input" id="urlInput" placeholder="Paste audio URL here…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-load" id="btnLoadUrl">Load</button>
+      </div>
+
     </div>
   </div>
 
   <script>
-    const audio       = document.getElementById('audio');
-    const trackTitle  = document.getElementById('trackTitle');
-    const statusDot   = document.getElementById('statusDot');
-    const viz         = document.getElementById('viz');
-    const currentTimeEl = document.getElementById('currentTime');
-    const durationEl  = document.getElementById('duration');
+    const audio          = document.getElementById('audio');
+    const trackTitle     = document.getElementById('trackTitle');
+    const statusDot      = document.getElementById('statusDot');
+    const viz            = document.getElementById('viz');
+    const currentTimeEl  = document.getElementById('currentTime');
+    const durationEl     = document.getElementById('duration');
     const progressSlider = document.getElementById('progressSlider');
-    const speedSlider = document.getElementById('speedSlider');
-    const pitchSlider = document.getElementById('pitchSlider');
-    const speedVal    = document.getElementById('speedVal');
-    const pitchVal    = document.getElementById('pitchVal');
-    const combinedRate = document.getElementById('combinedRate');
-    const btnPlay     = document.getElementById('btnPlay');
-    const iconPlay    = document.getElementById('iconPlay');
-    const iconPause   = document.getElementById('iconPause');
-    const btnLoop     = document.getElementById('btnLoop');
-    const btnBack     = document.getElementById('btnBack');
-    const btnReset    = document.getElementById('btnReset');
-
-    // ── Load URL param ──────────────────────────────────────────
-    const params = new URLSearchParams(window.location.search);
-    const audioUrl = params.get('url');
-
-    if (audioUrl) {
-      audio.src = audioUrl;
-      try {
-        const filename = decodeURIComponent(audioUrl.split('/').pop().split('?')[0]);
-        const name = filename.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-        trackTitle.textContent = name || filename;
-      } catch(e) {
-        trackTitle.textContent = 'Audio Track';
-      }
-    } else {
-      trackTitle.textContent = '← Pass ?url= to load track';
-    }
+    const speedSlider    = document.getElementById('speedSlider');
+    const pitchSlider    = document.getElementById('pitchSlider');
+    const speedVal       = document.getElementById('speedVal');
+    const pitchVal       = document.getElementById('pitchVal');
+    const combinedRate   = document.getElementById('combinedRate');
+    const btnPlay        = document.getElementById('btnPlay');
+    const iconPlay       = document.getElementById('iconPlay');
+    const iconPause      = document.getElementById('iconPause');
+    const btnLoop        = document.getElementById('btnLoop');
+    const btnBack        = document.getElementById('btnBack');
+    const btnReset       = document.getElementById('btnReset');
+    const errorBanner    = document.getElementById('errorBanner');
+    const errorMsg       = document.getElementById('errorMsg');
+    const loadingBar     = document.getElementById('loadingBar');
+    const urlInput       = document.getElementById('urlInput');
+    const btnLoadUrl     = document.getElementById('btnLoadUrl');
 
     // ── Helpers ─────────────────────────────────────────────────
     function fmtTime(s) {
@@ -545,12 +610,12 @@
     }
 
     function pitchDescription(v) {
-      if (v < 0.65)  return 'Very Deep';
-      if (v < 0.85)  return 'Deep';
-      if (v < 0.95)  return 'Low';
-      if (v < 1.05)  return 'Normal';
-      if (v < 1.25)  return 'High';
-      if (v < 1.55)  return 'Chipmunk';
+      if (v < 0.65) return 'Very Deep';
+      if (v < 0.85) return 'Deep';
+      if (v < 0.95) return 'Low';
+      if (v < 1.05) return 'Normal';
+      if (v < 1.25) return 'High';
+      if (v < 1.55) return 'Chipmunk';
       return 'Squeaky';
     }
 
@@ -558,17 +623,33 @@
       return ((val - min) / (max - min) * 100).toFixed(2) + '%';
     }
 
-    function applyRates() {
-      const spd = parseFloat(speedSlider.value);
-      const pitch = parseFloat(pitchSlider.value);
-      const combined = spd * pitch;
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorBanner.style.display = 'flex';
+      setLoading(false);
+    }
 
-      audio.preservesPitch  = false;
+    function hideError() {
+      errorBanner.style.display = 'none';
+    }
+
+    function setLoading(on) {
+      loadingBar.style.display = on ? 'block' : 'none';
+    }
+
+    function applyRates() {
+      const spd   = parseFloat(speedSlider.value);
+      const pitch = parseFloat(pitchSlider.value);
+      const combined = +(spd * pitch).toFixed(4);
+
+      // Critical: disable pitch correction BEFORE changing rate
+      audio.preservesPitch       = false;
       audio.webkitPreservesPitch = false;
+      audio.mozPreservesPitch    = false;
       audio.playbackRate = combined;
 
-      speedVal.textContent  = spd.toFixed(2) + '×';
-      pitchVal.textContent  = pitchDescription(pitch);
+      speedVal.textContent     = spd.toFixed(2) + '×';
+      pitchVal.textContent     = pitchDescription(pitch);
       combinedRate.textContent = 'rate: ' + combined.toFixed(2) + '×';
 
       speedSlider.style.setProperty('--pct', pct(spd, 0.5, 2.0));
@@ -577,42 +658,109 @@
 
     function updateProgress() {
       if (!audio.duration) return;
-      const pctVal = (audio.currentTime / audio.duration * 100);
+      const pctVal = (audio.currentTime / audio.duration) * 100;
       progressSlider.value = pctVal;
       progressSlider.style.setProperty('--pct', pctVal.toFixed(2) + '%');
       currentTimeEl.textContent = fmtTime(audio.currentTime);
     }
 
     function setPlaying(isPlaying) {
-      if (isPlaying) {
-        iconPlay.style.display  = 'none';
-        iconPause.style.display = '';
-        statusDot.classList.add('playing');
-        viz.classList.add('playing');
-      } else {
-        iconPlay.style.display  = '';
-        iconPause.style.display = 'none';
-        statusDot.classList.remove('playing');
-        viz.classList.remove('playing');
-      }
+      iconPlay.style.display  = isPlaying ? 'none' : '';
+      iconPause.style.display = isPlaying ? ''     : 'none';
+      statusDot.classList.toggle('playing', isPlaying);
+      viz.classList.toggle('playing', isPlaying);
     }
 
-    // ── Event listeners ─────────────────────────────────────────
-    btnPlay.addEventListener('click', () => {
-      if (!audioUrl) return;
-      audio.paused ? audio.play() : audio.pause();
-    });
+    // ── Load a URL into the player ───────────────────────────────
+    function loadAudio(rawUrl) {
+      if (!rawUrl || !rawUrl.trim()) return;
+      const url = rawUrl.trim();
 
-    audio.addEventListener('play',  () => setPlaying(true));
-    audio.addEventListener('pause', () => setPlaying(false));
-    audio.addEventListener('ended', () => setPlaying(false));
+      hideError();
+      setLoading(true);
+      setPlaying(false);
+
+      // Reset progress
+      progressSlider.value = 0;
+      progressSlider.style.setProperty('--pct', '0%');
+      currentTimeEl.textContent = '0:00';
+      durationEl.textContent    = '0:00';
+
+      // Derive track title from URL
+      try {
+        const raw = url.split('/').pop().split('?')[0];
+        const decoded = decodeURIComponent(raw);
+        trackTitle.textContent = decoded.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ') || 'Audio Track';
+      } catch(e) {
+        trackTitle.textContent = 'Audio Track';
+      }
+
+      // Key: set src THEN call load() — required by some Android WebViews
+      audio.src = url;
+      audio.load();  // ← was missing before; forces reload
+    }
+
+    // ── Parse ?url= on page load ─────────────────────────────────
+    const params   = new URLSearchParams(window.location.search);
+    const audioUrl = params.get('url');
+
+    if (audioUrl) {
+      urlInput.value = audioUrl;
+      loadAudio(audioUrl);
+    } else {
+      trackTitle.textContent = 'Paste a URL below or add ?url=';
+    }
+
+    // ── Audio events ─────────────────────────────────────────────
+    audio.addEventListener('canplay', () => {
+      setLoading(false);
+      hideError();
+      // Reapply rates once audio is ready (needed on some browsers)
+      applyRates();
+    });
 
     audio.addEventListener('loadedmetadata', () => {
       durationEl.textContent = fmtTime(audio.duration);
       progressSlider.max = 100;
+      applyRates(); // ensure rates stick after metadata loads
     });
 
+    audio.addEventListener('waiting',  () => setLoading(true));
+    audio.addEventListener('playing',  () => setLoading(false));
+    audio.addEventListener('play',     () => { setPlaying(true);  hideError(); });
+    audio.addEventListener('pause',    () => setPlaying(false));
+    audio.addEventListener('ended',    () => setPlaying(false));
     audio.addEventListener('timeupdate', updateProgress);
+
+    audio.addEventListener('error', () => {
+      const code = audio.error ? audio.error.code : '?';
+      const msgs = {
+        1: 'Playback aborted by the user.',
+        2: 'Network error — check the URL or your connection.',
+        3: 'Decoding error — file may be corrupt.',
+        4: 'Format not supported or URL inaccessible (CORS / 404).'
+      };
+      showError(msgs[code] || 'Unknown error (code ' + code + ').');
+      setPlaying(false);
+    });
+
+    // ── Controls ─────────────────────────────────────────────────
+    btnPlay.addEventListener('click', () => {
+      if (!audio.src) return;
+      if (audio.paused) {
+        // play() returns a Promise — must catch rejections
+        const p = audio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(err => {
+            if (err.name !== 'AbortError') {   // AbortError = user tapped quickly, ignore
+              showError('Playback blocked: ' + err.message);
+            }
+          });
+        }
+      } else {
+        audio.pause();
+      }
+    });
 
     progressSlider.addEventListener('input', () => {
       if (!audio.duration) return;
@@ -640,573 +788,26 @@
       applyRates();
     });
 
-    // Init
+    // ── Manual URL input ─────────────────────────────────────────
+    btnLoadUrl.addEventListener('click', () => {
+      const v = urlInput.value.trim();
+      if (v) {
+        // Update browser URL bar so sharing works
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.set('url', v);
+          history.replaceState(null, '', u.toString());
+        } catch(e) {}
+        loadAudio(v);
+      }
+    });
+
+    urlInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btnLoadUrl.click();
+    });
+
+    // Init sliders display
     applyRates();
   </script>
-</body>
-</html>
-            background: #1e293b;
-            border-radius: 9999px;
-            outline: none;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            background: #c084fc;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
-            transition: transform 0.1s;
-        }
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(1.2);
-        }
-        .slider-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-    </style>
-</head>
-<body class="p-6">
-
-    <div class="glass-card w-full max-w-sm p-8 shadow-2xl">
-        <!-- Track Display -->
-        <div class="text-center mb-8">
-            <div class="flex justify-center mb-4">
-                <div class="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 shadow-inner">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-                    </svg>
-                </div>
-            </div>
-            <h1 class="text-xl font-bold tracking-tight">AudPlay <span class="text-purple-400">Pro</span></h1>
-            <p id="track-name" class="text-xs text-slate-400 mt-2 truncate max-w-[240px] mx-auto">Streaming Media Link...</p>
-        </div>
-
-        <!-- HIDDEN AUDIO ENGINE -->
-        <audio id="audio-engine" class="hidden" style="display: none;" crossOrigin="anonymous"></audio>
-
-        <div class="space-y-8">
-            <!-- Speed Slider -->
-            <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Playback Speed</label>
-                    <span id="speed-display" class="text-purple-400 font-mono text-xs font-bold">1.0x</span>
-                </div>
-                <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.05" value="1.0">
-            </div>
-
-            <!-- Voice Changer / Pitch Slider -->
-            <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Voice Tone</label>
-                    <span id="pitch-display" class="text-purple-400 font-mono text-xs font-bold">Normal</span>
-                </div>
-                <input type="range" id="pitch-slider" min="0.5" max="2.0" step="0.05" value="1.0">
-                <div class="flex justify-between text-[10px] text-slate-500 px-1 font-medium uppercase tracking-wider mt-1">
-                    <span>Deep</span>
-                    <span>Robot</span>
-                    <span>Chipmunk</span>
-                </div>
-            </div>
-
-            <!-- Main Timeline Progress -->
-            <div class="pt-2">
-                <input type="range" id="progress-bar" value="0" class="!h-1">
-                <div class="flex justify-between text-[10px] text-slate-400 mt-2 font-mono">
-                    <span id="time-current">0:00</span>
-                    <span id="time-total">0:00</span>
-                </div>
-            </div>
-
-            <!-- Action Workspace Buttons -->
-            <div class="flex items-center justify-between pt-2">
-                <!-- Replay / Loop Toggle Button -->
-                <button id="loop-btn" class="p-3 bg-slate-800/60 rounded-2xl text-slate-400 hover:text-purple-400 transition-colors relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span id="loop-indicator" class="absolute top-1 right-1 w-2 h-2 bg-slate-600 rounded-full"></span>
-                </button>
-
-                <!-- Core Play Control -->
-                <button id="play-btn" class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center shadow-xl shadow-purple-900/40 hover:bg-purple-500 active:scale-95 transition-all">
-                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                </button>
-
-                <!-- Reset Configuration -->
-                <button onclick="resetApp()" class="p-3 bg-slate-800/60 rounded-2xl text-slate-400 hover:text-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const audio = document.getElementById('audio-engine');
-        const playBtn = document.getElementById('play-btn');
-        const playIcon = document.getElementById('play-icon');
-        const speedSlider = document.getElementById('speed-slider');
-        const pitchSlider = document.getElementById('pitch-slider');
-        const speedDisplay = document.getElementById('speed-display');
-        const pitchDisplay = document.getElementById('pitch-display');
-        const progressBar = document.getElementById('progress-bar');
-        const loopBtn = document.getElementById('loop-btn');
-        const loopIndicator = document.getElementById('loop-indicator');
-
-        // Extract Parameter Query
-        const params = new URLSearchParams(window.location.search);
-        const url = params.get('url');
-        if(url) {
-            audio.src = url;
-            document.getElementById('track-name').textContent = decodeURIComponent(url.split('/').pop());
-        }
-
-        // Processing Controls Trigger
-        playBtn.onclick = () => {
-            if (audio.paused) {
-                audio.play();
-                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
-            } else {
-                audio.pause();
-                playIcon.innerHTML = `<path d="M8 5v14l11-7z" />`;
-            }
-        };
-
-        // Replay Toggle System
-        loopBtn.onclick = () => {
-            audio.loop = !audio.loop;
-            if(audio.loop) {
-                loopBtn.classList.add('text-purple-400', 'bg-purple-500/10');
-                loopIndicator.classList.remove('bg-slate-600');
-                loopIndicator.classList.add('bg-purple-400');
-            } else {
-                loopBtn.classList.remove('text-purple-400', 'bg-purple-500/10');
-                loopIndicator.classList.remove('bg-purple-400');
-                loopIndicator.classList.add('bg-slate-600');
-            }
-        };
-
-        // Fixed Core Voice Changing Engine Logic
-        function modifyAudioProperties() {
-            const speedSetting = parseFloat(speedSlider.value);
-            const voiceChangerSetting = parseFloat(pitchSlider.value);
-
-            // Forces browser to stop compensating for pitch shifts naturally
-            if ('preservesPitch' in audio) {
-                audio.preservesPitch = false; 
-            } else if ('webkitPreservesPitch' in audio) {
-                audio.webkitPreservesPitch = false;
-            }
-
-            // Calculation formula to decouple raw speed manipulation from tone shift mechanics
-            audio.playbackRate = speedSetting * voiceChangerSetting;
-
-            // UI Display updates
-            speedDisplay.textContent = speedSetting.toFixed(2) + 'x';
-            
-            if(voiceChangerSetting === 1.0) pitchDisplay.textContent = "Normal";
-            else if(voiceChangerSetting < 1.0) pitchDisplay.textContent = "Deep (" + voiceChangerSetting.toFixed(2) + "x)";
-            else pitchDisplay.textContent = "Squeaky (" + voiceChangerSetting.toFixed(2) + "x)";
-        }
-
-        speedSlider.oninput = modifyAudioProperties;
-        pitchSlider.oninput = modifyAudioProperties;
-
-        function resetApp() {
-            speedSlider.value = 1.0;
-            pitchSlider.value = 1.0;
-            audio.loop = false;
-            loopBtn.classList.remove('text-purple-400', 'bg-purple-500/10');
-            loopIndicator.className = "absolute top-1 right-1 w-2 h-2 bg-slate-600 rounded-full";
-            modifyAudioProperties();
-        }
-
-        // Synchronization Track Layout
-        audio.ontimeupdate = () => {
-            if (!isNaN(audio.duration)) {
-                progressBar.value = (audio.currentTime / audio.duration) * 100;
-                document.getElementById('time-current').textContent = formatTime(audio.currentTime);
-                document.getElementById('time-total').textContent = formatTime(audio.duration);
-            }
-        };
-
-        progressBar.oninput = () => {
-            audio.currentTime = (progressBar.value / 100) * audio.duration;
-        };
-
-        function formatTime(s) {
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
-            return m + ":" + (sec < 10 ? '0' : '') + sec;
-        }
-    </script>
-</body>
-</html>
-
-
-```
-            background: #c084fc;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
-            transition: transform 0.1s;
-        }
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(1.2);
-        }
-        .slider-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-    </style>
-</head>
-<body class="p-6">
-
-    <div class="glass-card w-full max-w-sm p-8 shadow-2xl">
-        <!-- Track Display -->
-        <div class="text-center mb-8">
-            <div class="flex justify-center mb-4">
-                <div class="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-                    </svg>
-                </div>
-            </div>
-            <h1 class="text-xl font-bold tracking-tight">AudPlay <span class="text-purple-400">Pro</span></h1>
-            <p id="track-name" class="text-xs text-slate-400 mt-2 truncate max-w-[240px] mx-auto">Streaming Media Link...</p>
-        </div>
-
-        <audio id="audio-engine" crossOrigin="anonymous"></audio>
-
-        <div class="space-y-8">
-            <!-- Speed Slider -->
-            <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Playback Speed</label>
-                    <span id="speed-display" class="text-purple-400 font-mono text-xs font-bold">1.0x</span>
-                </div>
-                <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.05" value="1.0">
-            </div>
-
-            <!-- Voice Changer / Pitch Slider -->
-            <div class="space-y-2">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Voice Tone Changer</label>
-                    <span id="pitch-display" class="text-purple-400 font-mono text-xs font-bold">Normal</span>
-                </div>
-                <input type="range" id="pitch-slider" min="0.5" max="2.0" step="0.05" value="1.0">
-                <div class="flex justify-between text-[10px] text-slate-500 px-1">
-                    <span>Deep</span>
-                    <span>Robot</span>
-                    <span>Chipmunk</span>
-                </div>
-            </div>
-
-            <!-- Main Timeline Progress -->
-            <div class="pt-2">
-                <input type="range" id="progress-bar" value="0" class="!h-1">
-                <div class="flex justify-between text-[10px] text-slate-400 mt-2 font-mono">
-                    <span id="time-current">0:00</span>
-                    <span id="time-total">0:00</span>
-                </div>
-            </div>
-
-            <!-- Action Workspace Buttons -->
-            <div class="flex items-center justify-between pt-2">
-                <!-- Replay / Loop Toggle Button -->
-                <button id="loop-btn" class="p-3 bg-slate-800/60 rounded-2xl text-slate-400 hover:text-purple-400 transition-colors relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span id="loop-indicator" class="absolute top-1 right-1 w-2 h-2 bg-slate-600 rounded-full"></span>
-                </button>
-
-                <!-- Core Play Control -->
-                <button id="play-btn" class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center shadow-xl shadow-purple-900/40 hover:bg-purple-500 active:scale-95 transition-all">
-                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                </button>
-
-                <!-- Reset Configuration -->
-                <button onclick="resetApp()" class="p-3 bg-slate-800/60 rounded-2xl text-slate-400 hover:text-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const audio = document.getElementById('audio-engine');
-        const playBtn = document.getElementById('play-btn');
-        const playIcon = document.getElementById('play-icon');
-        const speedSlider = document.getElementById('speed-slider');
-        const pitchSlider = document.getElementById('pitch-slider');
-        const speedDisplay = document.getElementById('speed-display');
-        const pitchDisplay = document.getElementById('pitch-display');
-        const progressBar = document.getElementById('progress-bar');
-        const loopBtn = document.getElementById('loop-btn');
-        const loopIndicator = document.getElementById('loop-indicator');
-
-        // Extract Parameter Query
-        const params = new URLSearchParams(window.location.search);
-        const url = params.get('url');
-        if(url) {
-            audio.src = url;
-            document.getElementById('track-name').textContent = decodeURIComponent(url.split('/').pop());
-        }
-
-        // Processing Controls Trigger
-        playBtn.onclick = () => {
-            if (audio.paused) {
-                audio.play();
-                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
-            } else {
-                audio.pause();
-                playIcon.innerHTML = `<path d="M8 5v14l11-7z" />`;
-            }
-        };
-
-        // Replay Toggle System
-        loopBtn.onclick = () => {
-            audio.loop = !audio.loop;
-            if(audio.loop) {
-                loopBtn.classList.add('text-purple-400', 'bg-purple-500/10');
-                loopIndicator.classList.remove('bg-slate-600');
-                loopIndicator.classList.add('bg-purple-400');
-            } else {
-                loopBtn.classList.remove('text-purple-400', 'bg-purple-500/10');
-                loopIndicator.classList.remove('bg-purple-400');
-                loopIndicator.classList.add('bg-slate-600');
-            }
-        };
-
-        // Fixed Core Voice Changing Engine Logic
-        function modifyAudioProperties() {
-            const speedSetting = parseFloat(speedSlider.value);
-            const voiceChangerSetting = parseFloat(pitchSlider.value);
-
-            // FIX: Forces browser to stop compensating for pitch shifts naturally
-            if ('preservesPitch' in audio) {
-                audio.preservesPitch = false; 
-            } else if ('webkitPreservesPitch' in audio) {
-                audio.webkitPreservesPitch = false;
-            }
-
-            // Calculation formula to decouple raw speed manipulation from tone shift mechanics
-            audio.playbackRate = speedSetting * voiceChangerSetting;
-
-            // UI Display updates
-            speedDisplay.textContent = speedSetting.toFixed(2) + 'x';
-            
-            if(voiceChangerSetting === 1.0) pitchDisplay.textContent = "Normal";
-            else if(voiceChangerSetting < 1.0) pitchDisplay.textContent = "Deep (" + voiceChangerSetting.toFixed(2) + "x)";
-            else pitchDisplay.textContent = "Squeaky (" + voiceChangerSetting.toFixed(2) + "x)";
-        }
-
-        speedSlider.oninput = modifyAudioProperties;
-        pitchSlider.oninput = modifyAudioProperties;
-
-        function resetApp() {
-            speedSlider.value = 1.0;
-            pitchSlider.value = 1.0;
-            audio.loop = false;
-            loopBtn.classList.remove('text-purple-400', 'bg-purple-500/10');
-            loopIndicator.className = "absolute top-1 right-1 w-2 h-2 bg-slate-600 rounded-full";
-            modifyAudioProperties();
-        }
-
-        // Synchronization Track Layout
-        audio.ontimeupdate = () => {
-            if (!isNaN(audio.duration)) {
-                progressBar.value = (audio.currentTime / audio.duration) * 100;
-                document.getElementById('time-current').textContent = formatTime(audio.currentTime);
-                document.getElementById('time-total').textContent = formatTime(audio.duration);
-            }
-        };
-
-        progressBar.oninput = () => {
-            audio.currentTime = (progressBar.value / 100) * audio.duration;
-        };
-
-        function formatTime(s) {
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
-            return m + ":" + (sec < 10 ? '0' : '') + sec;
-        }
-    </script>
-</body>
-</html>
-            background: #a855f7;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
-        }
-        .slider-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-    </style>
-</head>
-<body class="p-6">
-
-    <div class="glass-card w-full max-w-md p-8 shadow-2xl">
-        <!-- Track Info -->
-        <div class="text-center mb-10">
-            <div class="flex justify-center mb-4">
-                <div class="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center border border-purple-500/30">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-                    </svg>
-                </div>
-            </div>
-            <h1 class="text-2xl font-bold">AudPlay <span class="text-purple-500">Pro</span></h1>
-            <p id="track-name" class="text-xs text-slate-400 mt-2 truncate max-w-xs mx-auto">Select a track...</p>
-        </div>
-
-        <audio id="audio-engine" crossOrigin="anonymous"></audio>
-
-        <div class="space-y-10">
-            <!-- Speed Slider -->
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Playback Speed</label>
-                    <span id="speed-display" class="text-purple-400 font-mono text-sm">1.0x</span>
-                </div>
-                <input type="range" id="speed-slider" min="0.5" max="2.5" step="0.1" value="1.0">
-            </div>
-
-            <!-- Pitch Slider -->
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <label class="slider-label">Voice Pitch</label>
-                    <span id="pitch-display" class="text-purple-400 font-mono text-sm">1.0x</span>
-                </div>
-                <input type="range" id="pitch-slider" min="0.5" max="2.0" step="0.1" value="1.0">
-            </div>
-
-            <!-- Progress -->
-            <div class="pt-4">
-                <input type="range" id="progress-bar" value="0" class="!h-1">
-                <div class="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
-                    <span id="time-current">0:00</span>
-                    <span id="time-total">0:00</span>
-                </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="flex items-center justify-between pt-2">
-                <button onclick="resetSliders()" class="p-3 bg-slate-800 rounded-2xl text-slate-400 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </button>
-
-                <button id="play-btn" class="w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center shadow-xl shadow-purple-900/40 hover:bg-purple-500 active:scale-95 transition-all">
-                    <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                </button>
-
-                <div class="flex flex-col items-center">
-                    <label class="text-[9px] uppercase text-slate-500 mb-1">Vol</label>
-                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.8" class="!w-20 !h-1">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const audio = document.getElementById('audio-engine');
-        const playBtn = document.getElementById('play-btn');
-        const playIcon = document.getElementById('play-icon');
-        const speedSlider = document.getElementById('speed-slider');
-        const pitchSlider = document.getElementById('pitch-slider');
-        const speedDisplay = document.getElementById('speed-display');
-        const pitchDisplay = document.getElementById('pitch-display');
-        const progressBar = document.getElementById('progress-bar');
-        const volumeSlider = document.getElementById('volume-slider');
-
-        // Load URL
-        const params = new URLSearchParams(window.location.search);
-        const url = params.get('url');
-        if(url) {
-            audio.src = url;
-            document.getElementById('track-name').textContent = decodeURIComponent(url.split('/').pop());
-        }
-
-        // Play / Pause
-        playBtn.onclick = () => {
-            if (audio.paused) {
-                audio.play();
-                playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
-            } else {
-                audio.pause();
-                playIcon.innerHTML = `<path d="M8 5v14l11-7z" />`;
-            }
-        };
-
-        // Effect Logic
-        function applyEffects() {
-            const speed = parseFloat(speedSlider.value);
-            const pitch = parseFloat(pitchSlider.value);
-            
-            // Total rate = speed * pitch
-            // Higher pitch = Squeaky, Lower = Deep
-            audio.playbackRate = speed * pitch;
-            
-            speedDisplay.textContent = speed.toFixed(1) + 'x';
-            pitchDisplay.textContent = pitch.toFixed(1) + 'x';
-        }
-
-        speedSlider.oninput = applyEffects;
-        pitchSlider.oninput = applyEffects;
-
-        function resetSliders() {
-            speedSlider.value = 1.0;
-            pitchSlider.value = 1.0;
-            applyEffects();
-        }
-
-        // UI Updates
-        audio.ontimeupdate = () => {
-            if (!isNaN(audio.duration)) {
-                progressBar.value = (audio.currentTime / audio.duration) * 100;
-                document.getElementById('time-current').textContent = formatTime(audio.currentTime);
-                document.getElementById('time-total').textContent = formatTime(audio.duration);
-            }
-        };
-
-        progressBar.oninput = () => {
-            audio.currentTime = (progressBar.value / 100) * audio.duration;
-        };
-
-        volumeSlider.oninput = () => {
-            audio.volume = volumeSlider.value;
-        };
-
-        function formatTime(s) {
-            const m = Math.floor(s / 60);
-            const sec = Math.floor(s % 60);
-            return m + ":" + (sec < 10 ? '0' : '') + sec;
-        }
-    </script>
 </body>
 </html>
