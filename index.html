@@ -859,12 +859,14 @@
     }
 
     function isGitHubFolder(url) {
-      return /github\.com\/[^\/]+\/[^\/]+\/(tree|blob)\//i.test(url) && !/\.(mp3|wav|ogg|m4a|aac|flac|webm|mp4|opus|wma)$/i.test(url);
+      // Check if it's a GitHub folder link AND does not have a file extension
+      // (This prevents misidentifying individual raw files or direct file blobs as folders)
+      return /^https?:\/\/github\.com\/[^\/]+\/[^\/]+\/tree\//i.test(url) && !/\.(mp3|wav|ogg|m4a|aac|flac|webm|mp4|opus|wma)$/i.test(url);
     }
 
     async function loadGitHubFolder(folderUrl) {
       try {
-        const match = folderUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/(?:tree|blob)\/([^\/]+)\/?(.*)/i);
+        const match = folderUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)\/?(.*)/i);
         if (!match) throw new Error("Invalid GitHub folder format.");
         
         const [, owner, repo, branch, path] = match;
@@ -921,7 +923,8 @@
         let finalUrl = await resolveUrl(inputUrl);
 
         // 2. Convert GitHub Web UI Blob and Tree links to Raw Media links for individual files
-        const blobRegex = /^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:blob|tree)\/([^\/]+)\/(.+)$/i;
+        // We only do this if it's NOT a folder. A folder has no file extension.
+        const blobRegex = /^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/(?:blob|tree)\/([^\/]+)\/(.+?\.(?:mp3|wav|ogg|m4a|aac|flac|webm|mp4|opus|wma)(?:\?.*)?)$/i;
         if (blobRegex.test(finalUrl)) {
           finalUrl = finalUrl.replace(blobRegex, 'https://raw.githubusercontent.com/$1/$2/$3/$4');
         }
