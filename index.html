@@ -303,6 +303,10 @@
     .btn-shuffle.active { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.35); color: var(--blue); box-shadow: 0 0 12px rgba(56,189,248,0.15); }
     .btn-shuffle.active .loop-dot { background: var(--blue); box-shadow: 0 0 6px var(--blue); display: block; }
 
+    /* Surround states */
+    .btn-surround.active { background: rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.35); color: var(--green); box-shadow: 0 0 12px rgba(74,222,128,0.15); }
+    .btn-surround.active .loop-dot { background: var(--green); box-shadow: 0 0 6px var(--green); display: block; }
+
     .loop-dot {
       width: 5px; height: 5px; border-radius: 50%;
       background: var(--text-lo); position: absolute;
@@ -496,8 +500,12 @@
         </button>
 
         <div class="controls-center">
-          <button class="btn btn-sm" id="btnSurround" title="Toggle Surround Sound" style="font-size: 10px; font-weight: bold;">
-            3D
+          <button class="btn btn-sm btn-surround" id="btnSurround" title="Toggle Surround Sound">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+              <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+            </svg>
+            <span class="loop-dot"></span>
           </button>
 
           <button class="btn btn-sm" id="btnPrev" title="Previous Track (or Back 10s)">
@@ -1103,10 +1111,6 @@
         isSurround = true;
         merger.connect(panner);
         panner.connect(audioCtx.destination);
-
-        btnSurround.style.color = "var(--green)";
-        btnSurround.style.borderColor = "rgba(74,222,128,0.35)";
-        btnSurround.style.background = "rgba(74,222,128,0.12)";
       } else {
         isSurround = !isSurround;
         if (isSurround) {
@@ -1114,21 +1118,15 @@
           sourceNode.connect(splitter);
           merger.connect(panner);
           panner.connect(audioCtx.destination);
-
-          btnSurround.style.color = "var(--green)";
-          btnSurround.style.borderColor = "rgba(74,222,128,0.35)";
-          btnSurround.style.background = "rgba(74,222,128,0.12)";
         } else {
           sourceNode.disconnect();
           merger.disconnect();
           panner.disconnect();
           sourceNode.connect(audioCtx.destination);
-
-          btnSurround.style.color = "";
-          btnSurround.style.borderColor = "";
-          btnSurround.style.background = "";
         }
       }
+
+      btnSurround.classList.toggle('active', isSurround);
 
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
